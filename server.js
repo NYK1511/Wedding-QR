@@ -29,7 +29,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
-const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, 'https://wedding-qr-p192.onrender.com/oauth2callback');
 
 // Function to compress video
 function compressVideo(inputPath, outputPath) {
@@ -74,10 +74,11 @@ async function uploadToDrive(filePath, fileName) {
     console.log('File uploaded successfully:', file.data.id);
     return file.data.id;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file:', error.response?.data || error.message || error);
     throw error;
   }
 }
+
 
 // Function to get and set the access token
 async function getAccessToken() {
@@ -102,6 +103,8 @@ function saveToken(token) {
 // Express route to handle video upload
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
+    console.log("Uploaded file path:", req.file.path); // Check the file path
+    
     // Ensure the user is authenticated
     await getAccessToken();
 
@@ -128,6 +131,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
     res.status(500).json({ error: 'Video upload failed', details: error.message });
   }
 });
+
 
 // Generate the OAuth2 authorization URL
 app.get('/auth', (req, res) => {
