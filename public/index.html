@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Messages for Ujjwal & Minal</title>
   <link rel="stylesheet" href="/styles.css">
   <!-- Link Google Fonts -->
@@ -40,10 +40,15 @@
     const stopBtn = document.getElementById('stop-recording');
     const sendBtn = document.getElementById('send');
 
-    // Access webcam
+    // Access webcam and request permissions
     async function init() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = stream;
+      } catch (error) {
+        console.error('Error accessing the camera:', error);
+        alert('Please grant camera and microphone permissions.');
+      }
     }
 
     // Start recording
@@ -98,6 +103,7 @@
       }
     };
 
+    // Initialize webcam on page load
     init();
   </script>
 </body>
