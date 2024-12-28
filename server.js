@@ -10,27 +10,26 @@ const app = express();
 
 // Serve static files from the "public" folder
 app.use(express.static('public'));
-app.use(express.static(path.join(__dirname, 'my-first-node-app', 'public')));
- // This ensures CSS and other static files are served
 app.use(bodyParser.json());
 
 // Serve the HTML page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Set up multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
 // Google Drive API credentials
-const CREDENTIALS_PATH = path.join('/etc/secrets/credentials.json');
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const TOKEN_PATH = path.join(__dirname, 'token.json');
 
-// OAuth2 client setup
-const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
-const { client_id, client_secret, redirect_uris } = credentials.installed;
-const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+// OAuth2 client setup with environment variables
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
+
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 // Function to compress video
 function compressVideo(inputPath, outputPath) {
@@ -81,7 +80,7 @@ async function uploadToDrive(filePath, fileName) {
 }
 
 // Function to get and set the access token
-function getAccessToken() {
+async function getAccessToken() {
   return new Promise((resolve, reject) => {
     if (fs.existsSync(TOKEN_PATH)) {
       fs.readFile(TOKEN_PATH, (err, token) => {
