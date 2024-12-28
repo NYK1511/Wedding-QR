@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 const upload = multer({ dest: 'uploads/' });
 
 // Google Drive API credentials
-const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
+const CREDENTIALS_PATH = path.join(__dirname, '/etc/secrets/credentials.json');
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const TOKEN_PATH = path.join(__dirname, 'token.json');
 
