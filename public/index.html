@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages for Ujjwal & Minal</title>
+  <link rel="stylesheet" href="/styles.css">
+  <!-- Link Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <h1>Messages for Ujjwal & Minal</h1>
+  <h2>Leave your heartfelt wishes for the lovely couple!</h2>
+
+  <!-- Add an illustration -->
+  <img class="illustration" src="https://www.freepik.com/free-vector/watercolor-wedding-bride-groom_6388002.htm#fromView=search&page=1&position=11&uuid=e4672f4a-cc04-476b-b84a-328476b88577&new_detail=true" alt="Wedding Illustration">
+
+  <!-- Video display area -->
+  <video id="video" autoplay></video>
+
+  <!-- Buttons for start and stop recording -->
+  <div class="buttons">
+    <button id="start-recording">Start Recording</button>
+    <button id="stop-recording" disabled>Stop Recording</button>
+  </div>
+
+  <!-- Preview of the recorded video -->
+  <video id="preview" controls style="display:none;"></video>
+
+  <!-- Send button to upload the video -->
+  <button id="send" disabled>Send Video</button>
+
+  <script>
+    let mediaRecorder;
+    let recordedBlobs;
+
+    const video = document.getElementById('video');
+    const preview = document.getElementById('preview');
+    const startBtn = document.getElementById('start-recording');
+    const stopBtn = document.getElementById('stop-recording');
+    const sendBtn = document.getElementById('send');
+
+    // Access webcam
+    async function init() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      video.srcObject = stream;
+    }
+
+    // Start recording
+    startBtn.onclick = () => {
+      recordedBlobs = [];
+      const options = { mimeType: 'video/mp4;codecs=vp9' };
+      mediaRecorder = new MediaRecorder(video.srcObject, options);
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedBlobs.push(event.data);
+      };
+
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    // Stop recording
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/mp4' });
+        preview.src = URL.createObjectURL(blob);
+        preview.style.display = 'block'; // Show the preview
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        sendBtn.disabled = false; // Enable the send button after recording
+      };
+    };
+
+    // Send the recorded video to the server
+    sendBtn.onclick = async () => {
+      const videoBlob = new Blob(recordedBlobs, { type: 'video/mp4' });
+
+      const formData = new FormData();
+      formData.append('video', videoBlob, 'recorded-video.mp4');
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          alert('Video uploaded successfully!');
+        } else {
+          alert('Video upload failed!');
+        }
+      } catch (error) {
+        console.error('Error uploading video:', error);
+        alert('There was an error uploading the video.');
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>
