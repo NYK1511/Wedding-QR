@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 
 // Serve the HTML page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'my-first-node-app', 'index.html'));
+  res.sendFile(path.join('my-first-node-app', 'index.html'));
 });
 
 // Set up multer for file uploads
