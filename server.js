@@ -9,6 +9,7 @@ const ffmpeg = require('fluent-ffmpeg'); // Import ffmpeg for video compression
 const app = express();
 
 // Serve static files from the "public" folder
+app.use(express.static('public'));
 app.use(express.static(path.join(__dirname, 'my-first-node-app', 'public')));
  // This ensures CSS and other static files are served
 app.use(bodyParser.json());
