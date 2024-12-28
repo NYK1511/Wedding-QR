@@ -35,20 +35,21 @@ const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, 'https://w
 function compressVideo(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .outputOptions([
-        '-c:v libx264', // Use H.264 codec for compression
-        '-preset fast', // Set the preset to "fast" for quicker compression
-        '-crf 28',      // Set the quality; lower is better quality
-      ])
-      .save(outputPath)
-      .on('end', () => {
-        console.log(`Compression finished: ${outputPath}`);
-        resolve(outputPath);
-      })
-      .on('error', (err) => {
-        console.error('Error during compression:', err);
-        reject(err);
-      });
+  .outputOptions([
+    '-c:v libx264', // Use H.264 codec for compression
+    '-preset ultrafast', // Set to ultrafast for testing
+    '-crf 28',
+  ])
+  .save(outputPath)
+  .on('end', () => {
+    console.log(`Compression finished: ${outputPath}`);
+    resolve(outputPath);
+  })
+  .on('error', (err) => {
+    console.error('Error during compression:', err);
+    reject(err);
+  });
+
   });
 }
 
