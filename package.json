@@ -4,8 +4,7 @@
   "description": "",
   "main": "my-first-node-app/server.js",
   "scripts": {
-    "start": "node my-first-node-app/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+   "start": "node my-first-node-app/server.js"
   },
   "keywords": [],
   "author": "",
