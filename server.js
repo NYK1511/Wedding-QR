@@ -4,7 +4,7 @@ const multer = require('multer');
 const fs = require('fs');
 const { google } = require('googleapis');
 const bodyParser = require('body-parser');
-const ffmpeg = require('fluent-ffmpeg'); // Import ffmpeg for video compression
+const ffmpeg = require('fluent-ffmpeg');
 
 const app = express();
 
@@ -29,27 +29,26 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
-const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, 'https://wedding-qr-p192.onrender.com/oauth2callback');
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 // Function to compress video
 function compressVideo(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-  .outputOptions([
-    '-c:v libx264', // Use H.264 codec for compression
-    '-preset ultrafast', // Set to ultrafast for testing
-    '-crf 28',
-  ])
-  .save(outputPath)
-  .on('end', () => {
-    console.log(`Compression finished: ${outputPath}`);
-    resolve(outputPath);
-  })
-  .on('error', (err) => {
-    console.error('Error during compression:', err);
-    reject(err);
-  });
-
+      .outputOptions([
+        '-c:v libx264', // Use H.264 codec for compression
+        '-preset ultrafast', // Set to ultrafast for testing
+        '-crf 28',
+      ])
+      .save(outputPath)
+      .on('end', () => {
+        console.log(`Compression finished: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on('error', (err) => {
+        console.error('Error during compression:', err);
+        reject(err);
+      });
   });
 }
 
@@ -80,33 +79,32 @@ async function uploadToDrive(filePath, fileName) {
   }
 }
 
-
 // Function to get and set the access token
 async function getAccessToken() {
-  return new Promise((resolve, reject) => {
-    if (fs.existsSync(TOKEN_PATH)) {
-      fs.readFile(TOKEN_PATH, (err, token) => {
-        if (err) return reject('No token found');
-        oAuth2Client.setCredentials(JSON.parse(token));
-        resolve();
-      });
-    } else {
-      reject('No token found');
+  if (fs.existsSync(TOKEN_PATH)) {
+    const tokenData = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
+    oAuth2Client.setCredentials(tokenData);
+
+    // Refresh access token if needed
+    if (oAuth2Client.isTokenExpiring()) {
+      console.log('Refreshing expired access token...');
+      const { credentials } = await oAuth2Client.refreshAccessToken();
+      fs.writeFileSync(TOKEN_PATH, JSON.stringify(credentials));
+      oAuth2Client.setCredentials(credentials);
     }
-  });
+  } else {
+    throw new Error('No token found. User must authenticate.');
+  }
 }
 
 // Function to save token after initial authorization
-function saveToken(token) {
-  fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
+function saveToken(tokens) {
+  fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
 }
 
-// Express route to handle video upload
+// Route to handle video upload
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
-    console.log("Uploaded file path:", req.file.path); // Check the file path
-    
-    // Ensure the user is authenticated
     await getAccessToken();
 
     if (!req.file) {
@@ -133,11 +131,11 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   }
 });
 
-
 // Generate the OAuth2 authorization URL
 app.get('/auth', (req, res) => {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
+    prompt: 'consent', // Ensures refresh token is always sent
     scope: SCOPES,
   });
   res.send(`Authorize this app by visiting this URL: <a href="${authUrl}" target="_blank">${authUrl}</a>`);
@@ -148,8 +146,11 @@ app.get('/oauth2callback', async (req, res) => {
   const { code } = req.query;
   try {
     const { tokens } = await oAuth2Client.getToken(code);
+
+    // Save the access and refresh tokens
     saveToken(tokens);
-    res.send('Authorization successful, you can now upload videos.');
+
+    res.send('Authorization successful! You can now upload videos.');
   } catch (error) {
     console.error('Error retrieving access token:', error);
     res.status(500).send('Error during authentication');
