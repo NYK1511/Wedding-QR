@@ -24,10 +24,11 @@ const upload = multer({ dest: 'uploads/' });
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const TOKEN_PATH = path.join(__dirname, 'token.json');
 
-// OAuth2 client setup with environment variables
+// OAuth2 client setup
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
+const FOLDER_ID = process.env.FOLDER_ID;
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
@@ -36,8 +37,8 @@ function compressVideo(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .outputOptions([
-        '-c:v libx264', // Use H.264 codec for compression
-        '-preset ultrafast', // Set to ultrafast for testing
+        '-c:v libx264', 
+        '-preset ultrafast', 
         '-crf 28',
       ])
       .save(outputPath)
@@ -58,7 +59,7 @@ async function uploadToDrive(filePath, fileName) {
 
   const fileMetadata = {
     name: fileName,
-    parents: ['152xi57MG8R4NSfRVVPRcOsbHKMdujD4J'], // Replace with your folder ID
+    parents: [FOLDER_ID],
   };
   const media = {
     mimeType: 'video/mp4',
@@ -80,13 +81,13 @@ async function uploadToDrive(filePath, fileName) {
 }
 
 // Function to get and set the access token
-async function getAccessToken() {
+async function ensureAccessToken() {
   if (fs.existsSync(TOKEN_PATH)) {
     const tokenData = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
     oAuth2Client.setCredentials(tokenData);
 
-    // Refresh access token if needed
-    if (oAuth2Client.isTokenExpiring()) {
+    // Check if token is expired and refresh if needed
+    if (oAuth2Client.credentials.expiry_date <= Date.now()) {
       console.log('Refreshing expired access token...');
       const { credentials } = await oAuth2Client.refreshAccessToken();
       fs.writeFileSync(TOKEN_PATH, JSON.stringify(credentials));
@@ -97,7 +98,7 @@ async function getAccessToken() {
   }
 }
 
-// Function to save token after initial authorization
+// Function to save tokens after initial authorization
 function saveToken(tokens) {
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
 }
@@ -105,7 +106,7 @@ function saveToken(tokens) {
 // Route to handle video upload
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
-    await getAccessToken();
+    await ensureAccessToken();
 
     if (!req.file) {
       throw new Error('No file uploaded');
@@ -135,21 +136,18 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 app.get('/auth', (req, res) => {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent', // Ensures refresh token is always sent
+    prompt: 'consent',
     scope: SCOPES,
   });
   res.send(`Authorize this app by visiting this URL: <a href="${authUrl}" target="_blank">${authUrl}</a>`);
 });
 
-// Handle the OAuth2 callback (after user has authorized)
+// Handle the OAuth2 callback
 app.get('/oauth2callback', async (req, res) => {
   const { code } = req.query;
   try {
     const { tokens } = await oAuth2Client.getToken(code);
-
-    // Save the access and refresh tokens
     saveToken(tokens);
-
     res.send('Authorization successful! You can now upload videos.');
   } catch (error) {
     console.error('Error retrieving access token:', error);

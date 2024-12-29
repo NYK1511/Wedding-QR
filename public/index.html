@@ -13,10 +13,10 @@
   <h2>Leave your heartfelt wishes for the lovely couple!</h2>
 
   <!-- Add an illustration -->
-  <img class="illustration" src="https://www.freepik.com/free-vector/watercolor-wedding-bride-groom_6388002.htm#fromView=search&page=1&position=11&uuid=e4672f4a-cc04-476b-b84a-328476b88577&new_detail=true" alt="Wedding Illustration">
+  <img class="illustration" src="https://example.com/wedding-illustration.jpg" alt="Wedding Illustration">
 
   <!-- Video display area -->
-  <video id="video" autoplay></video>
+  <video id="video" autoplay muted playsinline></video>
 
   <!-- Buttons for start and stop recording -->
   <div class="buttons">
@@ -32,7 +32,7 @@
 
   <script>
     let mediaRecorder;
-    let recordedBlobs;
+    let recordedBlobs = [];
 
     const video = document.getElementById('video');
     const preview = document.getElementById('preview');
@@ -40,28 +40,46 @@
     const stopBtn = document.getElementById('stop-recording');
     const sendBtn = document.getElementById('send');
 
-    // Access webcam and request permissions
-    async function init() {
+    // Initialize the camera
+    async function initCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: true
+        });
         video.srcObject = stream;
       } catch (error) {
-        console.error('Error accessing the camera:', error);
-        alert('Please grant camera and microphone permissions.');
+        console.error('Error accessing camera/microphone:', error);
+        alert('Please grant camera and microphone permissions to proceed.');
       }
     }
 
     // Start recording
     startBtn.onclick = () => {
       recordedBlobs = [];
-      const options = { mimeType: 'video/mp4;codecs=vp9' };
-      mediaRecorder = new MediaRecorder(video.srcObject, options);
+      let options = { mimeType: 'video/webm;codecs=vp9' };
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        console.warn(`${options.mimeType} is not supported. Switching to default.`);
+        options = { mimeType: 'video/webm' };
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(video.srcObject, options);
+      } catch (e) {
+        console.error('Failed to initialize MediaRecorder:', e);
+        alert('Recording is not supported on this device.');
+        return;
+      }
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedBlobs.push(event.data);
+        if (event.data && event.data.size > 0) {
+          recordedBlobs.push(event.data);
+        }
       };
 
       mediaRecorder.start();
+      console.log('Recording started');
       startBtn.disabled = true;
       stopBtn.disabled = false;
     };
@@ -70,21 +88,21 @@
     stopBtn.onclick = () => {
       mediaRecorder.stop();
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedBlobs, { type: 'video/mp4' });
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
         preview.src = URL.createObjectURL(blob);
-        preview.style.display = 'block'; // Show the preview
+        preview.style.display = 'block';
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        sendBtn.disabled = false; // Enable the send button after recording
+        sendBtn.disabled = false;
       };
     };
 
-    // Send the recorded video to the server
+    // Send video to the server
     sendBtn.onclick = async () => {
-      const videoBlob = new Blob(recordedBlobs, { type: 'video/mp4' });
+      const videoBlob = new Blob(recordedBlobs, { type: 'video/webm' });
 
       const formData = new FormData();
-      formData.append('video', videoBlob, 'recorded-video.mp4');
+      formData.append('video', videoBlob, 'recorded-video.webm');
 
       try {
         const response = await fetch('/upload', {
@@ -95,16 +113,16 @@
         if (response.ok) {
           alert('Video uploaded successfully!');
         } else {
-          alert('Video upload failed!');
+          alert('Failed to upload the video. Please try again.');
         }
       } catch (error) {
-        console.error('Error uploading video:', error);
-        alert('There was an error uploading the video.');
+        console.error('Upload error:', error);
+        alert('An error occurred while uploading the video.');
       }
     };
 
-    // Initialize webcam on page load
-    init();
+    // Initialize the camera on page load
+    initCamera();
   </script>
 </body>
 </html>
